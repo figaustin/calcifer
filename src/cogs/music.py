@@ -1,5 +1,6 @@
 import discord
 from discord.ext import commands
+from discord import app_commands
 from yt_dlp import YoutubeDL
 from youtubesearchpython import VideosSearch
 import asyncio
@@ -15,6 +16,7 @@ class MusicCog(commands.Cog):
         self.queue = []
         self.YDL_OPTIONS = {'format': 'bestaudio/best'}
         self.FFMPEG_OPTIONS = {
+            "before_options": "-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5",
             'options': '-vn'}
 
         self.vc = None
@@ -45,17 +47,17 @@ class MusicCog(commands.Cog):
             self.playing = False
 
     # infinite loop checking 
-    async def play_music(self, ctx):
+    async def play_music(self, interaction):
         if len(self.queue) > 0:
             self.playing = True
 
             m_url = self.queue[0]['source']
             #try to connect to voice channel if you are not already connected
             if self.vc == None or not self.vc.is_connected():
-                self.vc = await ctx.author.voice.channel.connect()
+                self.vc = await interaction.user.voice.channel.connect()
                 #in case we fail to connect
                 if self.vc == None :
-                    await ctx.send("🔥 Could not connect to the voice channel 🔥")
+                    await interaction.response.send_message("🔥 Could not connect to the voice channel 🔥")
                     return
             #remove the first element as you are currently playing it
             self.queue.pop(0)
@@ -69,14 +71,14 @@ class MusicCog(commands.Cog):
         else:
             self.playing = False
 
-    @commands.command(name="play", aliases=["p","playing"], help="Plays a selected song from youtube")
-    async def play(self, ctx, *args):
-        query = " ".join(args)
+    @app_commands.command(name="play", description="Search for a song!")
+    @app_commands.describe(query="query")
+    async def play(self, interaction: discord.Interaction, query: str):
 
         try:
-            voice_channel = ctx.author.voice.channel
+            voice_channel = interaction.user.voice.channel
         except:
-            await ctx.send("🔥 You need to connect to a voice channel first! 🔥")
+            await interaction.response.send_message("🔥 You need to connect to a voice channel first! 🔥")
             return
         
         if self.paused:
@@ -85,25 +87,31 @@ class MusicCog(commands.Cog):
             song = self.search_yt(query)
 
             if type(song) == type(True):
-                await ctx.send("🔥 Could not play the song, because of incorrect format, try another keyword. This could be due to playlist or a livestream format. 🔥")
+                await interaction.response.send_message("🔥 Could not play the song, because of incorrect format, try another keyword. This could be due to playlist or a livestream format. 🔥")
             else:
                 if self.playing:
-                    await ctx.send(f"🔥 #{len(self.queue)+2} -'{song['title']}' added to the queue! 🔥")  
+                    await interaction.response.send_message(f"🔥 #{len(self.queue)+2} -'{song['title']}' added to the queue! 🔥")  
                 else:
-                    await ctx.send(f"🔥 '{song['title']}'** added to the queue! 🔥")  
+                    await interaction.response.send_message(f"🔥 '{song['title']}'** added to the queue! 🔥")  
 
                 self.queue.append(song)
                 if self.playing == False:
-                    await self.play_music(ctx)
+                    await self.play_music(interaction)
 
 
-    @commands.command(name="pause", help="Pauses the current song being played")
-    async def pause(self, ctx, *args):
-        if self.is_playing:
+    @app_commands.command(name="pause", description="Pauses the current song being played")
+    async def pause(self, interaction: discord.Interaction):
+        if self.playing:
             self.playing = False
             self.paused = True
             self.vc.pause()
-        elif self.is_paused:
+            await interaction.response.send_message(f"🔥 Paused current song! 🔥")
+        elif self.paused:
             self.paused = False
             self.playing = True
             self.vc.resume()
+            await interaction.response.send_message(f"🔥 Unpaused current song! 🔥")
+
+    @app_commands.command(name="ping", description="Ping the server!")
+    async def ping(self, interaction: discord.Interaction):
+        await interaction.response.send_message(f"Pong!")
