@@ -6,6 +6,9 @@ from youtubesearchpython import VideosSearch
 import asyncio
 
 
+FFMPEG_BEFORE_OPTIONS = "-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5"
+FFMPEG_OPTIONS = "-vn"
+
 class MusicCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
@@ -14,10 +17,7 @@ class MusicCog(commands.Cog):
         self.paused = False
 
         self.queue = []
-        self.YDL_OPTIONS = {'format': 'bestaudio/best'}
-        self.FFMPEG_OPTIONS = {
-            "before_options": "-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5",
-            'options': '-vn'}
+        self.YDL_OPTIONS = {'format': 'bestaudio/best', 'quiet' : 'true'}
 
         self.vc = None
 
@@ -31,6 +31,7 @@ class MusicCog(commands.Cog):
     
     async def play_next(self):
         if len(self.queue) > 0:
+            print("found next")
             self.playing = True
 
             #get the first url
@@ -42,9 +43,11 @@ class MusicCog(commands.Cog):
             with YoutubeDL(self.YDL_OPTIONS) as ydl:
                 data = await loop.run_in_executor(None, lambda: ydl.extract_info(m_url, download=False))
                 song = data['url']
-                self.vc.play(discord.FFmpegPCMAudio(song, **self.FFMPEG_OPTIONS), after=lambda e: asyncio.run_coroutine_threadsafe(self.play_next(), self.bot.loop))
+                self.vc.play(discord.FFmpegPCMAudio(song, before_options=FFMPEG_BEFORE_OPTIONS, options=FFMPEG_OPTIONS), after=lambda e: asyncio.run_coroutine_threadsafe(self.play_next(), self.bot.loop))
         else:
+            print("didnt find next")
             self.playing = False
+            # await self.vc.disconnect()
 
     # infinite loop checking 
     async def play_music(self, interaction):
@@ -66,7 +69,7 @@ class MusicCog(commands.Cog):
             with YoutubeDL(self.YDL_OPTIONS) as ydl: 
                 data = await loop.run_in_executor(None, lambda: ydl.extract_info(m_url, download=False))
                 song = data['url']
-                self.vc.play(discord.FFmpegPCMAudio(source=song, options=self.FFMPEG_OPTIONS), after=lambda e: asyncio.run_coroutine_threadsafe(self.play_next(), self.bot.loop))
+                self.vc.play(discord.FFmpegPCMAudio(source=song, before_options=FFMPEG_BEFORE_OPTIONS, options=FFMPEG_OPTIONS), after=lambda e: asyncio.run_coroutine_threadsafe(self.play_next(), self.bot.loop))
             
         else:
             self.playing = False
@@ -89,10 +92,7 @@ class MusicCog(commands.Cog):
             if type(song) == type(True):
                 await interaction.response.send_message("🔥 Could not play the song, because of incorrect format, try another keyword. This could be due to playlist or a livestream format. 🔥")
             else:
-                if self.playing:
-                    await interaction.response.send_message(f"🔥 #{len(self.queue)+2} -'{song['title']}' added to the queue! 🔥")  
-                else:
-                    await interaction.response.send_message(f"🔥 '{song['title']}'** added to the queue! 🔥")  
+                await interaction.response.send_message(f"🔥 **'{song['title']}'** added to the queue! 🔥")  
 
                 self.queue.append(song)
                 if self.playing == False:
@@ -115,3 +115,22 @@ class MusicCog(commands.Cog):
     @app_commands.command(name="ping", description="Ping the server!")
     async def ping(self, interaction: discord.Interaction):
         await interaction.response.send_message(f"Pong!")
+
+    @app_commands.command(name="skip", description="Skips to the next song in the queue")
+    async def skip(self, interaction: discord.Interaction):
+        if self.vc != None and self.vc:
+            self.vc.stop()
+
+            await interaction.response.send_message("🔥 Skipped to the next song! 🔥")
+
+    @app_commands.command(name="queue", description="Shows the songs in the music queue")
+    async def show_queue(self, interaction: discord.Interaction):
+        queue_str = ""
+        for x in range(0, len(self.queue)):
+            queue_str += f"{x + 1}. **" + self.queue[x]['title'] +  "** \n"
+
+        if queue_str != "":
+            await interaction.response.send_message(f"🎶🔥 **Music Queue** 🔥🎶" + "\n" + "--------------------------------------------\n" + queue_str)
+        else:
+            await interaction.response.send_message(f"🎶🔥 The music queue is empty! Add songs with **/play!** 🔥🎶")
+        
