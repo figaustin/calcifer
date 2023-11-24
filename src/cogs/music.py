@@ -133,4 +133,14 @@ class MusicCog(commands.Cog):
             await interaction.response.send_message(f"🎶🔥 **Music Queue** 🔥🎶" + "\n" + "--------------------------------------------\n" + queue_str)
         else:
             await interaction.response.send_message(f"🎶🔥 The music queue is empty! Add songs with **/play!** 🔥🎶")
-        
+    
+    @app_commands.command(name="stop", description="Clears queue and disconnects Calcifer")
+    async def stop(self, interaction: discord.Interaction):
+        if interaction.user.voice.channel == None:
+            await interaction.response.send_message("🔥 You need to connect to a voice channel first! 🔥")
+
+        if self.vc != None and self.vc:
+            self.queue = []
+            self.vc.stop()
+            await self.vc.disconnect()
+            await interaction.response.send_message("🔥 Stopped playing music and disconnected! 🔥")
