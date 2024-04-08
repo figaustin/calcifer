@@ -17,6 +17,7 @@ class Music(commands.Cog):
 
     @discord.slash_command()
     async def play(self, ctx, query: str):
+        await ctx.defer()
         try:
             voice_channel = ctx.author.voice.channel
         except:
@@ -33,9 +34,9 @@ class Music(commands.Cog):
             try:
                 song = await queue.add_to_queue(ctx, query)
 
-                await ctx.send_response(f"🔥 **'{song.title}'** was added to the queue! 🔥")
+                await ctx.send_followup(f"🔥 **'{song.title}'** was added to the queue! 🔥")
             except QueueError:
-                await ctx.send_response("🔥 Could not play the song, either because of incorrect format(playlist or livestream) or search yielded no results, try another keyword/url! 🔥")
+                await ctx.send_followup("🔥 Could not play the song, either because of incorrect format(playlist or livestream) or search yielded no results, try another keyword/url! 🔥")
     @discord.slash_command()
     async def pause(self, ctx):
         try:

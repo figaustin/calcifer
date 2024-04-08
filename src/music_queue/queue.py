@@ -29,6 +29,8 @@ class Queue():
         self.paused = False
 
         self.queue: list[Song] = []
+        self.now_playing: Song = None
+
         self.YDL_OPTIONS = {'format': 'bestaudio/best', 'quiet' : 'true'}
 
         self.vc = None
@@ -73,6 +75,7 @@ class Queue():
                 if self.vc == None:
                     return False
             self.playing = True
+            self.now_playing = self.queue[0]
             self.queue.pop(0)
 
             loop = asyncio.get_event_loop()
@@ -81,27 +84,27 @@ class Queue():
                 song = data['url']
                 self.vc.play(discord.FFmpegPCMAudio(source=song, before_options=FFMPEG_BEFORE_OPTIONS,
                                                 options=FFMPEG_OPTIONS), after=lambda e: asyncio.run_coroutine_threadsafe(self.play(ctx), self.bot.loop))
-                         
         else:
             self.playing=False
             return False
 
-    async def play_next(self):
-        if len(self.queue) > 0:
-            self.playing = True
+    #Keeping this here just incase (Now commented out because it is literally the same as the regular play function above???)
+    # async def play_next(self):
+    #     if len(self.queue) > 0:
+    #         self.playing = True
 
-            url = self.queue[0].url
+    #         url = self.queue[0].url
 
-            self.queue.pop(0)
+    #         self.queue.pop(0)
 
-            loop = asyncio.get_event_loop()
-            with YoutubeDL(self.YDL_OPTIONS) as ydl:
-                data = await loop.run_in_executor(None, lambda: ydl.extract_info(url, download=False))
-                song = data['url']
-                self.vc.play(discord.FFmpegPCMAudio(song, before_options=FFMPEG_BEFORE_OPTIONS, options=FFMPEG_OPTIONS), after=lambda e: asyncio.run_coroutine_threadsafe(self.play_next(), self.bot.loop))
-        else:
-            self.playing = False
-            await self.vc.disconnect()
+    #         loop = asyncio.get_event_loop()
+    #         with YoutubeDL(self.YDL_OPTIONS) as ydl:
+    #             data = await loop.run_in_executor(None, lambda: ydl.extract_info(url, download=False))
+    #             song = data['url']
+    #             self.vc.play(discord.FFmpegPCMAudio(song, before_options=FFMPEG_BEFORE_OPTIONS, options=FFMPEG_OPTIONS), after=lambda e: asyncio.run_coroutine_threadsafe(self.play_next(), self.bot.loop))
+    #     else:
+    #         self.playing = False
+    #         await self.vc.disconnect()
 
     async def pause(self):
         if self.playing:
