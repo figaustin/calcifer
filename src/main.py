@@ -1,29 +1,16 @@
-import discord
-import dotenv
 import os
-import asyncio
+import discord
+from dotenv import load_dotenv
+from music_queue.queue import Queue
+load_dotenv()
+token = str(os.getenv("TOKEN"))
+bot = discord.Bot(intents=discord.Intents.all())
 
-from discord.ext import commands
-from cogs.music import MusicCog
-
-dotenv.load_dotenv()
-
-intents = discord.Intents.all()
-
-bot = commands.Bot(command_prefix='/', intents=intents)
-
-async def main():
-    async with bot:
-        await bot.add_cog(MusicCog(bot))
-        await bot.start(os.getenv('TOKEN'))
+queues: list[Queue] = []
 
 @bot.event
 async def on_ready():
-    print(f'Logged in as {bot.user}')
-    try:
-        synced = await bot.tree.sync()
-        print(f"Synced commands!")
-    except Exception as e:
-        print(f"Error syncing commands! {e}")
+    print(f"{bot.user} is ready and online!")
 
-asyncio.run(main())
+bot.load_extension('cogs.music_cog')
+bot.run(token)
