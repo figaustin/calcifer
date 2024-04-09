@@ -12,12 +12,13 @@ queues = []
 
 class Song():
 
-    def __init__(self, song_type, title, duration, thumbnail, url):
+    def __init__(self, song_type, title, duration, thumbnail, url, member: discord.Member):
         self.song_type = song_type
         self.title = title
         self.duration = duration
         self.thumbnail = thumbnail
         self.url = url
+        self.member = member
 
 class Playlist():
     def __init__(self, count, title):
@@ -40,26 +41,26 @@ class Queue():
         self.vc = None
         self.guild_id = guild_id
 
-    async def search_yt(self, query) -> Song:
+    async def search_yt(self, query, interaction: discord.Interaction) -> Song:
         if "list=" in query:
             raise PlaylistError("The url provided was a playlist, use a keyword, url without a playlist or use the playlist function")
         if "youtube" in query:
             with YoutubeDL(self.YDL_OPTIONS) as ydl:
                 info = ydl.extract_info(query, download=False)
-                song = Song("youtube", info["title"], info["duration_string"], info["thumbnail"], info["webpage_url"] )
+                song = Song("youtube", info["title"], info["duration_string"], info["thumbnail"], info["webpage_url"], interaction.user)
         else:
             search = VideosSearch(query, limit=5)
             try:
                 result = search.result()["result"][0]
             except IndexError:
                 raise QueueError("Search query yielded no results, try again with a different keyword!")
-            song = Song("youtube", result["title"], result["duration"], result["thumbnail"],
-                        "https://www.youtube.com/watch?v=" + result["id"])
+            song = Song("youtube", result["title"], result["duration"], result["thumbnails"][0]["url"],
+                        "https://www.youtube.com/watch?v=" + result["id"], interaction.user)
         return song
             
     async def add_to_queue(self, interaction: discord.Interaction, query: str) -> list[Song]:
 
-        song = await self.search_yt(query)
+        song = await self.search_yt(query, interaction)
         self.queue.append(song)
 
         if not self.playing:

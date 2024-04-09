@@ -4,6 +4,7 @@ from discord import app_commands
 from dotenv import load_dotenv
 from music_queue import Queue, find_or_add_queue, QueueError
 from music_queue.queue import PauseResumeError, PlaylistError
+from embeds import queue_embed
 
 load_dotenv()
 token = str(os.getenv("TOKEN"))
@@ -92,18 +93,20 @@ async def skip(interaction: discord.Interaction):
 @calcifer.tree.command(name="queue", description="Display all the songs currently in the queue!")
 async def queue(interaction: discord.Interaction):
     queue: Queue = await find_or_add_queue(calcifer, interaction.user.guild.id)
-    songs = await queue.get_queue()
-    now_playing = queue.now_playing.title
-    queue_str = f"Now Playing: **{now_playing}**\n"
-    count = 1
+    # songs = await queue.get_queue()
+    # now_playing = queue.now_playing.title
+    # queue_str = f"Now Playing: **{now_playing}**\n"
+    # count = 1
 
-    if len(songs) > 0:
-        for song in songs:
-            queue_str += f"{count}. **{song.title}**" + "\n"
+    # if len(songs) > 0:
+    #     for song in songs:
+    #         queue_str += f"{count}. **{song.title}**" + "\n"
         
-        await interaction.response.send_message(f"🔥🎶 **Music Queue** 🎶🔥" + "\n" + "--------------------------------------------\n" + queue_str)
-    else: 
-        await interaction.response.send_message(f"🔥🎶 The music queue is empty! Add songs with **/play!** 🎶🔥")
+    #     await interaction.response.send_message(f"🔥🎶 **Music Queue** 🎶🔥" + "\n" + "--------------------------------------------\n" + queue_str)
+    # else: 
+    #     await interaction.response.send_message(f"🔥🎶 The music queue is empty! Add songs with **/play!** 🎶🔥")
+    embed = await queue_embed(queue)
+    await interaction.response.send_message(embed=embed)
 
 @calcifer.tree.command(name="stop", description="Stop the queue completely and disconnect!")
 async def stop(interaction: discord.Interaction):
