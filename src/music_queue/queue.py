@@ -26,14 +26,14 @@ class Playlist():
         self. title = title
 
 class Queue():
-
+    """Class for handling the queue/songs in a music session."""
     def __init__(self, client, guild_id):
         self.client: discord.Client = client
 
         self.playing = False
         self.paused = False
 
-        self.queue: list[Song] = []
+        self.songs: list[Song] = []
         self.now_playing: Song = None
 
         self.YDL_OPTIONS = {'format': 'bestaudio/best', 'quiet' : 'true'}
@@ -61,27 +61,27 @@ class Queue():
     async def add_to_queue(self, interaction: discord.Interaction, query: str) -> list[Song]:
 
         song = await self.search_yt(query, interaction)
-        self.queue.append(song)
+        self.songs.append(song)
 
         if not self.playing:
             await self.play(interaction)
         return song
     
     async def play(self, interaction: discord.Interaction):
+        if len(self.songs) > 0:
 
-        if len(self.queue) > 0:
-
-            url = self.queue[0].url
+            url = self.songs[0].url
 
             if self.vc == None or not self.vc.is_connected():
                 self.vc = await interaction.user.voice.channel.connect()
-
+                print(self.vc.channel.id)
+                print(self.vc.is_connected())
                 #in case we fail to connect
                 if self.vc == None:
                     return False
             self.playing = True
-            self.now_playing = self.queue[0]
-            self.queue.pop(0)
+            self.now_playing = self.songs[0]
+            self.songs.pop(0)
 
             loop = asyncio.get_event_loop()
             with YoutubeDL(self.YDL_OPTIONS) as ydl:
@@ -144,7 +144,7 @@ class Queue():
             
     async def stop(self):
         if self.vc != None and self.vc:
-            self.queue = []
+            self.songs = []
             for x in range(len(queues)):
                 if queues[x].guild_id== self.guild_id:
                     queues.pop(x)
@@ -168,7 +168,7 @@ class Queue():
             for entry in entries:
                 song = Song("youtube", entry["title"], entry["duration_string"],
                             entry["thumbnail"], entry["webpage_url"])
-                self.queue.append(song)
+                self.songs.append(song)
         
         if not self.playing:
             try:
@@ -177,8 +177,8 @@ class Queue():
                 raise QueueError("Could not play the queue")
         return playlist
 
-    async def get_queue(self) -> list[Song]:
-        return self.queue
+    async def get_songs(self) -> list[Song]:
+        return self.songs
     
     async def get_now_playing(self) -> Song:
         return self.now_playing
