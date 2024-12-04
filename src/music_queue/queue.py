@@ -73,9 +73,12 @@ class Queue():
             url = self.songs[0].url
 
             if self.vc == None or not self.vc.is_connected():
-                self.vc = await interaction.user.voice.channel.connect()
-                print(self.vc.channel.id)
-                print(self.vc.is_connected())
+                try:
+                    self.vc = await interaction.user.voice.channel.connect()
+                    print(self.vc.channel.id)
+                    print(self.vc.is_connected())
+                except Exception:
+                    print("Already in voice channel")
                 #in case we fail to connect
                 if self.vc == None:
                     return False

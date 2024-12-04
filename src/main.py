@@ -20,6 +20,7 @@ class Calcifer(discord.Client):
 
         self.tree = app_commands.CommandTree(self)
         self.sessions: list[MusicSession] = []
+        
 
     async def setup_hook(self):
         await self.tree.sync()
@@ -40,17 +41,28 @@ async def on_ready():
 
 @calcifer.tree.command(name="ping", description="Ping!")
 async def ping(interaction: discord.Interaction):
+    print("Ping command used")
     await interaction.response.send_message("Pong!")
+    return True
 
 @calcifer.tree.command(name="play", description="Play a song!")
 @app_commands.describe(query="query")
 async def play(interaction: discord.Interaction, query: str):
-    await interaction.response.defer()
+    print("Play command used")
+    
     try:
+
+        if not interaction.user.voice:
+            await interaction.response.send_message("🔥 You need to connect to a voice channel first! 🔥")
+            return 
+        
         voice_channel = interaction.user.voice.channel
-    except:
-        await interaction.response.send_message("🔥 You need to connect to a voice channel first! 🔥")
-        return False
+        await interaction.response.defer()
+    except Exception as e:
+        print(f"Error in play command: {e}")
+        if not interaction.response.is_done():
+            await interaction.response.send_message("⚠️ An unexpected error occurred. Please try again later.")
+        return 
     
     # if queue.paused:
     #     #the pause function is also for resuming
@@ -71,34 +83,42 @@ async def play(interaction: discord.Interaction, query: str):
         await interaction.followup.send(f"🔥 **'{song.title}'** was added to the queue! 🔥")
         resend = await music_session.embed.send_embed(text_channel)
 
-    except QueueError:
+    except QueueError as qe:
         await interaction.followup.send("🔥 Search yielded no results, please try another keyword! 🔥")
-    except PlaylistError:
+        raise qe
+
+    except PlaylistError as pe: 
         await interaction.followup.send("🔥 URL provided was a playlist, please use **/playlist** command for playlists! 🔥")
+        raise pe
 
 @calcifer.tree.command(name="pause", description="Pause the current song in queue! Or resume song if it is paused!")
 async def pause(interaction: discord.Interaction):
+    print("Pause command used")
     try:
         music_session = await calcifer.get_music_session(interaction)
         queue: Queue = music_session.queue
         await queue.pause()
         if queue.paused:
             await interaction.response.send_message(f"🔥 Paused the queue! 🔥")
-    except QueueError:
+    except QueueError as qe:
         await interaction.response.send_message(f"🔥 Something went wrong! Could not pause the queue! 🔥")
+        raise qe
 
 @calcifer.tree.command(name="resume", description="Resume the current song if it is paused!")
 async def resume(interaction: discord.Interaction):
+    print("Resume command used")
     try:
         music_session = await calcifer.get_music_session(interaction)
         queue: Queue = music_session.queue
         await queue.resume()
         await interaction.response.send_message(f"🔥 Resumed the queue! 🔥")
-    except PauseResumeError:
+    except PauseResumeError as pre:
         await interaction.response.send_message("🔥 Something went wrong! Could not resume the queue! 🔥")
+        raise pre
 
 @calcifer.tree.command(name="skip", description="Skip the current song!")
 async def skip(interaction: discord.Interaction):
+    print("Skip command used")
     try:
         music_session = await calcifer.get_music_session(interaction)
         queue: Queue = music_session.queue
@@ -106,14 +126,18 @@ async def skip(interaction: discord.Interaction):
             await queue.skip()
             resend = await music_session.embed.send_embed(interaction.channel)
             await interaction.response.send_message(f"🔥 Skipped to the next song in queue! 🔥")
+            return True
         else:
             await queue.stop()
             await interaction.response.send_message(f"🔥 Queue was empty! Now disconnecting... 🔥")
-    except QueueError:
+            return False
+    except QueueError as qe:
         await interaction.response.send_message(f"🔥 Something went wrong! Could not skip to next song! 🔥")
+        raise qe
 
 @calcifer.tree.command(name="queue", description="Display all the songs currently in the queue!")
 async def queue(interaction: discord.Interaction):
+    print("Queue command used")
     music_session = await calcifer.get_music_session(interaction)
     queue: Queue = music_session.queue
     # songs = await queue.get_queue()
@@ -130,21 +154,26 @@ async def queue(interaction: discord.Interaction):
     #     await interaction.response.send_message(f"🔥🎶 The music queue is empty! Add songs with **/play!** 🎶🔥")
     embed = await CalciferMusicEmbed.queue_embed(queue)
     await interaction.response.send_message(embed=embed)
+    return True
 
 @calcifer.tree.command(name="stop", description="Stop the queue completely and disconnect!")
 async def stop(interaction: discord.Interaction):
+    print("Stop command used")
     try:
         music_session = await calcifer.get_music_session(interaction)
         queue: Queue = music_session.queue
         await queue.stop()
         calcifer.sessions.remove(music_session)
         await interaction.response.send_message("🔥 Stopped the queue and disconnected! 🔥")
-    except QueueError:
-        await interaction.response.send_message("🔥 Something went wrong! Could not stop queue, try disconnectiong manually! 🔥") 
+        return True
+    except QueueError as qe:
+        await interaction.response.send_message("🔥 Something went wrong! Could not stop queue, try disconnectiong manually! 🔥")
+        raise qe
 
 @calcifer.tree.command(name="playlist", description="Play all songs from a youtube playlist!")
 @app_commands.describe(url="url")
 async def playlist(interaction: discord.Interaction, url: str):
+    print("Playlist command used")
     await interaction.response.defer()
     try:
         music_session = await calcifer.get_music_session(interaction)
@@ -152,7 +181,9 @@ async def playlist(interaction: discord.Interaction, url: str):
         playlist = await queue.playlist(interaction, url)
         resend = await music_session.embed.send_embed(interaction.channel)
         await interaction.followup.send(f'🔥 **"{playlist.title}"** playlist added **[{playlist.count}]** songs! 🔥')
-    except PlaylistError as e:
+        return True
+    except PlaylistError as pe:
         await interaction.followup.send(f"🔥 Something went wrong! Could not add songs from playlist provided! 🔥")
+        raise pe
 
 calcifer.run(token)
